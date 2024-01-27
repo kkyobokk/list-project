@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import '../App.css';
 
@@ -7,6 +7,8 @@ const LogIn = function() {
 
   const [pss, setPss] = useState('');
   const [id, setId] = useState('');
+  const [toKeepLogin, setToKeepLogin] = useState(false);
+  const [isRequired, setIsRequired] = useState(false);
 
 
   const getId = e => {
@@ -19,19 +21,16 @@ const LogIn = function() {
       return e.target.value;
     })
   }
+  const getToKeepLogin = e => {
+    setToKeepLogin(() => {
+      return e.target.checked
+    });
+  }
 
-  const sendIDandPassword = async function() {
-    
-    if(id === '' && pss === '') {
-      alert("Enter the correct form")
-      return;
-    }
-    else if(id.length < 5 && pss.length < 5) {
-      alert("Enter 5 or more length");
-      return;
-    }
+  useEffect(() => {
+    if(!isRequired) return;
 
-    await fetch("https://localhost:8080/login", {
+    fetch("https://localhost:8080/login", {
       method : "POST",
       headers: {
         "Content-Type": "application/json",
@@ -39,26 +38,51 @@ const LogIn = function() {
       body : JSON.stringify({
         "id" : id,
         "pss" : pss,
+        "tokeepLogin" : toKeepLogin,
       }),
       credentials: "include",
     })
+    .then(res => res.json())
     .then(res => {
-      alert("Login Success")
-      navigate('/');
+      if(!res.Err){
+        if(typeof(res.Err) === "number"){
+          alert(res.ErrMessage);
+          setIsRequired(() => false);
+        }
+        else {
+          alert("Login Success");
+          navigate('/list');
+        }
+      }
+      else {
+        alert("Fail to Login");
+        console.log(res.ErrMessage);
+        setIsRequired(() => false);
+      }
     })
     .catch(err => {
-      alert("Fail to Login")
+      alert("Fail to Login");
+      setIsRequired(() => false);
       console.log(err)
     });
-  };
+  }, [isRequired, id, pss])
+
+  const sendIDandPassword = useCallback(() => {
+    if(!isRequired) {
+      setIsRequired(()=>true)
+    }
+    else {
+      alert("Try again in few moments")
+    }
+  }, [isRequired]);
 
   return (
-    <div className="center">
+    <div className="center" style= {{gap:"20px"}}>
+      <div className="login">
         <div className="text">
           <h1 style={{
             color:"#FFDEEE",
             textShadow : "0px 2px 4px gray",
-            //fontFamily : "궁서체",
             }}>List<br/>Manage</h1>
         </div>
         <br/>
@@ -70,6 +94,13 @@ const LogIn = function() {
           <div id="sub" className="postele" 
             onClick={sendIDandPassword}> login </div>
         </div>
+      </div>
+
+      <div className="keeplogin">
+        <div id="keeploginText"> to keep login </div>
+        <input onClick = {getToKeepLogin} type="checkbox"/>
+      </div>
+
       </div>
   )
 }

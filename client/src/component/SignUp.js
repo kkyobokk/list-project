@@ -2,6 +2,8 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import '../App.css';
 
+
+
 const  validateId = function(id) {
     return /^[a-zA-Z0-9]{5,12}$/.test(id);
 }
@@ -16,7 +18,18 @@ const validateAll = function(id, pss, checkPss) {
 
 function Signup(){
     const navigate = useNavigate();
-    const [isRequired, setIsRequired] = useState(false);
+    const [isRequired, setIsRequired] = useState({signUp : false, checkId : false});
+    const [isNotDuplicated, setIsNotDuplicated] = useState({bool : null, id : null});
+    
+    const signUp = useCallback(() => {
+        if(!isRequired.signUp){
+            setIsRequired(()=>Object({...isRequired, signUp : true}));
+        }
+        else {
+            alert("Try again a few momnets later");
+        }
+    }, [isRequired]);
+
 
     const [infos, setInfos] = useState({
         id : '',
@@ -40,7 +53,17 @@ function Signup(){
             label : "ID",
             text : "중복확인",
             onclickFunc : () => {
-                
+                if(!isRequired.checkId){
+                    setIsRequired(() => {return {...isRequired, checkId : true}})
+                }
+                else { 
+                    alert("Try again in please")
+                }
+            },
+            onkeydownFunc : (e) => {
+                if(e.key === 'Enter') {
+
+                }
             }
         },
         {
@@ -52,11 +75,15 @@ function Signup(){
         },
         {
             type : 'CheckPss',
-            style : {},
+            style : {
+                fontSize : "10px",
+                fontWeight : "700",
+            },
             label : "Check Password",
             text : "",
             onclickFunc : () => {}
-        }])
+        }
+    ])
     
     const [signupBtn, setSignupBtn] = useState({
         setting : {
@@ -69,7 +96,6 @@ function Signup(){
             text : "Unaccepted"
         },
         usable : false,
-        onclickFunc : () => {},
     })
 
     const signupBtnStyle = useMemo(() => {
@@ -96,7 +122,7 @@ function Signup(){
     useEffect(() => {
         setSignupBtn(() => {
             const res = {...signupBtn};
-            res.usable = validateAll(infos.id, infos.pss, infos.checkPss);
+            res.usable = validateAll(infos.id, infos.pss, infos.checkPss) && isNotDuplicated.bool;
             res.setting = res.usable ? signupBtnStyle.useable : signupBtnStyle.unusable;
             res.onclickFunc = !res.usable ? () => {
                 if(!validateId(infos.id)) {
@@ -111,28 +137,28 @@ function Signup(){
                     alert('Password and Password Confirmation are incorrect');
                     return;
                 }
+                if(!isNotDuplicated.bool){
+                    alert('Check your Id')
+                }
                 return;
             } : signUp;
             return res;
         })
-    }, [infos])
+    }, [infos, isNotDuplicated])
 
     useEffect(() => {
         setSequence(() => {
             const res = [...sequence];
-            res[2].text = infos.pss !== '' && infos.checkPss !== '' ? infos.pss === infos.checkPss ? 'correct' : 'incorrect' : ''
-            if(!(infos.id.length > 5 && infos.pss.length > 5 
-                && infos.pss === infos.checkPss)) {
-                    
-                }
+            res[2].text = infos.pss !== '' && infos.checkPss !== '' ? infos.pss === infos.checkPss ? '비밀번호가 일치합니다' : '비밀번호가 불일치합니다' : ''
+    
             return res;
         })
     }, [infos])
 
     useEffect(() => {
-        if(!isRequired) return;
+        if(!isRequired.signUp) return;
         
-        fetch("https://localhost:8080/signup", {
+        fetch("https://localhost:8080/signup/toSignUp", {
             method : "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -142,33 +168,91 @@ function Signup(){
                 "pss" : infos.pss,
             }),
             credentials: "include",
-            })
-            .then(res => res.json())
-            .then(res => {
-                console.log(res);
-                if(!res.Err && res.IsSignedUp){
-                    alert("Sign Success")
-                    navigate('/login');
-                }
-                else {
-                    setIsRequired(() => {
-                            alert("Try again please");
-                            console.log(res.ErrMessage);
-                            return false;
-                        }
-                    )
-
-                }
-            })
-            .catch(err => {
+        })
+        .then(res => res.json())
+        .then(res => {
+            console.log(res);
+            if(!res.Err && res.IsSignedUp){
+                alert("Sign Success")
+                navigate('/login');
+            }
+            else {
                 setIsRequired(() => {
-                        alert("Fail to Sign up");
-                        console.log(err);
+                        alert("Try again please");
+                        console.log(res.ErrMessage);
                         return false;
                     }
                 )
+            }
+        })
+        .catch(err => {
+            setIsRequired(() => {
+                    alert("Fail to Sign up");
+                    console.log(err);
+                    return {...isRequired, signUp : false};
+                }
+            )
+        });
+    }, [isRequired, infos]);
+
+    useEffect(() => {
+        if(isNotDuplicated.id !== null && infos.id !== isNotDuplicated.id){
+            setIsNotDuplicated(() => Object({bool : null, id : null}))
+            setSequence(() => {
+                const res = [...sequence];
+                res[0].text = "중복확인";
+                res[0].style = {...res[0].style, backgroundColor : "#CCCCCC"}
+                return res;
             });
-    }, [isRequired, infos])
+        }
+    }, [infos])
+
+    useEffect(() => {
+        if(!isRequired.checkId) return;
+        
+
+        fetch("https://localhost:8080/signup/checkId", {
+            method : "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body : JSON.stringify({
+                "id" : infos.id,
+            }),
+            credentials: "include",
+        })
+        .then(res => res.json())
+        .then(res => {
+             if(!res.Err){
+                setIsRequired(() => {
+                    return {...isRequired, checkId:false};
+                });
+                setSequence(() => {
+                    const ret = [...sequence];
+                    ret[0].text = res.isNotDuplicated ? "사용 가능" : "사용 불가";
+                    ret[0].style = {...ret[0].style, backgroundColor : res.isNotDuplicated ? "#55CC99" : "#CC5555"};
+                    return ret;
+                });
+                setIsNotDuplicated(() => {return {bool : res.isNotDuplicated, id : infos.id}});
+             }
+             else {
+                setIsRequired(() => {
+                        alert("Try again please");
+                        console.log(res);
+                        return {...isRequired, checkId : false};
+                    }
+                )
+            }
+        })
+        .catch(err => {
+            setIsRequired(() => {
+                    alert("Fail to Sign up");
+                    console.log(err);
+                    return {...isRequired, checkId : false};
+                }
+            )
+        });
+    }, [isRequired, infos]);
 
     const getFunction = useMemo(() => {
         return { 
@@ -197,18 +281,10 @@ function Signup(){
 
     
 
-    const signUp = useCallback(() => {
-        if(!isRequired){
-            setIsRequired(()=>true);
-        }
-        else {
-            alert("Try again a few momnets later")
-        }
-    }, [isRequired])
 
     return (
         <div className = "center" style = {{height : "80%"}}>
-            <div className="text" style = {{margin : ""}}>
+            <div className="text">
                 <h1 style={{
                 color:"#FFDEEE",
                 textShadow : "0px 2px 4px gray",
@@ -225,11 +301,12 @@ function Signup(){
                         </div>
                         <form className="signuptbEnterele">
                             <input className="signuptbInput" name={"signuptbInput"+e.type} 
-                            type = {['Pss', 'CheckPss'].includes(e.type) ? "password" : null}
-                            autoComplete="off"
-                            onChange = {getFunction[e.type]}
-                            onClick = {e.onclickFunc} />
-                            <div className="singuptbInputText" style={e.style}> {e.text} </div>
+                                   type = {['Pss', 'CheckPss'].includes(e.type) ? "password" : null}
+                                   autoComplete="off"
+                                   onChange = {getFunction[e.type]} />
+                            <div className="singuptbInputText" 
+                                 style={e.style}
+                                 onClick = {e.onclickFunc}> {e.text} </div>
                         </form>
                     </div>
                 })}

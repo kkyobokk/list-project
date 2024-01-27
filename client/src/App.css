@@ -62,7 +62,7 @@ div {
   flex-direction: column;
   border-radius : 10px;
   min-height : 200px;
-  min-width : 500px;
+  min-width : 300px;
 }
 
 .text {
@@ -117,7 +117,7 @@ div {
 }
 
 .signuptbInput {
-  width : 150px;
+  min-width : 150px;
   height : 50%;
   margin: auto 2%;
 }
@@ -137,4 +137,52 @@ div {
 .singuptbInputText {
   text-align: center;
   margin : auto auto;
+}
+
+.login {
+  display: flex;
+  flex-direction: column;
+  margin : 0 auto;
+  margin-top : 5%;
+  width : 100%;
+}
+
+.keeplogin {
+  display: flex;
+  margin : 0 auto;
+  border : #000000 solid 1px;
+  border-radius: 5px;
+  padding : 5px;
+  width : 150px;
+  justify-content: center;
+}
+
+#keeploginText {
+  font-size : 15px;
+  color : blue;
+}
+
+.lists {
+  display : flex;
+  flex-direction: column;
+  gap : 10px;
+}
+
+.list {
+  border-bottom: #000000 solid 2px;
+  margin: 0 auto;
+  width : 50%;
+  padding :10px;
+  font-size : 16px;
+  font-weight: 700;
+}
+
+.appendList {
+  border : #000000 solid 2px;
+  border-radius: 10px;
+  width : 200px;
+  height : 30px;
+  line-height: 30px;
+  margin : 0 auto;
+  background-color: #C0B0A0;
 }

@@ -4,21 +4,20 @@ const bodyParser = require('body-parser');
 
 const session = require('express-session');
 const FileStore = require('session-file-store')(session);
+const cookieParser = require('cookie-parser');
 
 const expressSanitizer = require('express-sanitizer');
 const https = require("https");
 
 const fs = require("fs");
 const path = require("path");
-const CryptoJS = require('crypto-js');
 const crypto = require('crypto');
-//const sha256 = CryptoJS.SHA256;
 const sha256 = function(e){
   return crypto.createHash('sha256').update(e).digest('base64');
 }
 
 const customHash = function(e){
-  return e.slice(0, 2).toString().toUppercase()
+  return e.slice(0, 2).toUpperCase()
 }
 
 
@@ -40,6 +39,7 @@ app.use(bodyParser.urlencoded({extended:false}));
 app.use(express.json());
 app.use(express.urlencoded({ extended : true}));
 app.use(expressSanitizer());
+app.use(cookieParser());
 
 app.use(session({
   name : "SID",
@@ -65,50 +65,93 @@ app.use((req,res,next)=>{
 
 
 app.post("/login", function (req, res) {
-  req.session.loggedin = true;
-  res.send({loggedin : true});
+  try {
+    const id = sha256(req.body.id).toString(16);
+    const pss = sha256(req.body.pss).toString(16);
+    const Path = path.join(__dirname, 'database', customHash(id), id, 'userInfo.json'); 
+    if(!fs.existsSync(Path)){
+      res.json({Err : 4001, ErrMessage : "Invalid Id", LoggedIn : false});
+    }
+    else {
+      fs.readFile(Path, (err, readData) => {
+        const data = JSON.parse(data);
+        const salt = data.salt;
+        if(data.saltedPassword !== sha256(`${pss}:${salt}`).toString('base64')){
+          res.json({Err : 4002, ErrMessage : "Invalid Password", LoggedIn : false})
+        }
+        else {
+          req.session.Loggedin = true;
+          res.json({
+            Err : false, 
+            ErrMessage : null, 
+            Loggedin : true,
+            token : req.body.tokeepLogin ? sha256(`${id}:${salt}`).toString(16) : undefined,
+          });
+        }
+      })
+    }
+  }
+  catch (err) {
+    console.log(err);
+    res.json({Err : true, ErrMessage : err, LoggedIn : false});
+  }
 });
 
 
 
-app.post("/signup", function (req, res) {
+app.post("/signup/toSignUp", function (req, res) {
   try {
-    const id = sha256(req.body.id).toString();
-    const pss = sha256(req.body.pss).toString();
+    const id = sha256(req.body.id).toString(16);
+    const pss = sha256(req.body.pss).toString(16);
     const salt = crypto.randomBytes(64).toString('base64');
-    const password = sha256(`${pss}${salt}`).toString();
+    const password = sha256(`${pss}:${salt}`).toString('base64');
 
-    const signUpPath = path.join(__dirname,'database','user_info',customHash(id))
+    const signUpPath = path.join(__dirname,'database',customHash(id), id)
     
     if(!fs.existsSync(signUpPath)) {
-      console.log('files : ',fs.readdirSync(path.join(__dirname, 'database', 'user_info')))
-      fs.mkdirSync(signUpPath);
+      fs.mkdirSync(signUpPath,  { recursive : true });
     }
-
    
-    fs.writeFile(path.join(signUpPath,`${id}.json`), 
-
+    fs.writeFile(path.join(signUpPath, `userInfo.json`), 
       JSON.stringify({
         saltedPassword : password,
         salt : salt,
       }), 
-
-      (err) => {
-        console.log(err ? '\n\n'+err+'\n\n' : 'None');
-        if(!err) {
-          res.json({Err : false, ErrMassage : 'None', IsSignedUp : true})
+      (err_1) => {
+        console.log(err_1 ? '\n\n'+err_1+'\n\n' : 'None');
+        if(!err_1) {
+            fs.mkdirSync(path.join(signUpPath, 'userLists'))
+            res.json({Err : false, ErrMessage : 'None', IsSignedUp : true});
         }
         else {
-          res.json({Err : true, ErrMessage : err, IsSignedUp : false})
+          console.log(err_1);
+          res.json({Err : true, ErrMessage : err_1, IsSignedUp : false})
         }
-      })
-
+      }
+    )
   }
   catch (err) { 
     console.log(err);
     res.json({Err : true, ErrMessage : err, IsSignedUp : false});
   }
 });
+
+
+app.post("/signup/checkId", function(req, res){
+  try {
+    const id = sha256(req.body.id).toString(16);
+    const dir = customHash(id);
+    const isDuplicated = fs.existsSync(path.join(__dirname, "database", dir, id));
+    res.json({Err : false, ErrMessage : null, isNotDuplicated : !isDuplicated});
+  }
+  catch (err) {
+    console.log(err);
+    res.json({Err : true, ErrMessage : err, isDuplicated : null});
+  }
+})
+
+
+
 
 
 
