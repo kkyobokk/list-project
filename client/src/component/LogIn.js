@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Button } from 'react-bootstrap';
+import { SHA256 } from 'crypto-js';
 import '../App.css';
+import 'bootstrap/dist/css/bootstrap.min.css';
 
 const LogIn = function() {
   const navigate = useNavigate();
@@ -18,7 +21,7 @@ const LogIn = function() {
   }
   const getPss = e => {
     setPss(() => {
-      return e.target.value;
+      return SHA256(e.target.value);
     })
   }
   const getToKeepLogin = e => {
@@ -50,12 +53,14 @@ const LogIn = function() {
           setIsRequired(() => false);
         }
         else {
+          sessionStorage.setItem("loggedin", res.Loggedin)
+          localStorage.setItem('token', res.token);
           alert("Login Success");
-          navigate('/list');
+          navigate(`/list/${id}`);
         }
       }
       else {
-        alert("Fail to Login");
+        alert("Fail to Login2");
         console.log(res.ErrMessage);
         setIsRequired(() => false);
       }
@@ -63,13 +68,13 @@ const LogIn = function() {
     .catch(err => {
       alert("Fail to Login");
       setIsRequired(() => false);
-      console.log(err)
+      console.log(err);
     });
-  }, [isRequired, id, pss])
+  }, [isRequired, id, pss]);
 
   const sendIDandPassword = useCallback(() => {
     if(!isRequired) {
-      setIsRequired(()=>true)
+      setIsRequired(()=>true);
     }
     else {
       alert("Try again in few moments")
@@ -97,8 +102,11 @@ const LogIn = function() {
       </div>
 
       <div className="keeplogin">
-        <div id="keeploginText"> to keep login </div>
-        <input onClick = {getToKeepLogin} type="checkbox"/>
+        <label style={{"display":"inline-block"}}>
+          <span id="keeploginText"> to keep login </span>
+          <input onClick = {getToKeepLogin} type="checkbox"/>  
+        </label>
+        
       </div>
 
       </div>

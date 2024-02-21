@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import '../App.css';
+import { SHA256 } from 'crypto-js';
 
 
 
@@ -9,11 +10,11 @@ const  validateId = function(id) {
 }
 
 const validatePss = function(pss) {
-    return /^\S{5,30}$/.test(pss)
+    return pss.length >=5;
 }
 
 const validateAll = function(id, pss, checkPss) {
-    return validateId(id) && validatePss(pss) && pss === checkPss;
+    return validateId(id) && validatePss(pss) && pss.hashed === checkPss.hashed;
 }
 
 function Signup(){
@@ -149,8 +150,7 @@ function Signup(){
     useEffect(() => {
         setSequence(() => {
             const res = [...sequence];
-            res[2].text = infos.pss !== '' && infos.checkPss !== '' ? infos.pss === infos.checkPss ? '비밀번호가 일치합니다' : '비밀번호가 불일치합니다' : ''
-    
+            res[2].text = infos.pss !== '' && infos.checkPss !== '' ? infos.pss === infos.checkPss ? '비밀번호가 일치합니다' : '비밀번호가 불일치합니다' : '';
             return res;
         })
     }, [infos])
@@ -196,6 +196,7 @@ function Signup(){
     }, [isRequired, infos]);
 
     useEffect(() => {
+        console.log(infos.pss);
         if(isNotDuplicated.id !== null && infos.id !== isNotDuplicated.id){
             setIsNotDuplicated(() => Object({bool : null, id : null}))
             setSequence(() => {
@@ -266,14 +267,20 @@ function Signup(){
         Pss : e => {
             setInfos(() => {
                 const res = {...infos};
-                res.pss = e.target.value;
+                res.pss = {
+                    hashed:SHA256(e.target.value).toString(),
+                    length:e.target.value.length
+                };
                 return res;
             })
         },
         CheckPss : e => {
             setInfos(() => {
                 const res = {...infos};
-                res.checkPss = e.target.value;
+                res.checkPss = res.pss = {
+                    hashed:SHA256(e.target.value).toString(),
+                    length:e.target.value.length
+                };
                 return res;
             })
         }}
